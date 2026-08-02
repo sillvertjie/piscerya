@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // =====================================================
@@ -242,6 +243,7 @@ model KnowledgeDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([workspaceId, slug])
   @@index([workspaceId])
   @@index([parentId])
 }
@@ -347,6 +349,7 @@ model Comment {
 enum ActivityType {
   TASK_COMPLETED
   TASK_CREATED
+  PROJECT_CREATED
   PROJECT_UPDATED
   KNOWLEDGE_ADDED
   COMMENT_ADDED
