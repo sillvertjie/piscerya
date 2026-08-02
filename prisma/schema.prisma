@@ -1,0 +1,464 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// Auth (dipertahankan dari project lama — sudah benar)
+// =====================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  // Theme & Appearance (mockup: color theme, accent, density, font, radius)
+  // Disimpan sebagai JSON tunggal — tidak perlu tabel terpisah untuk preferensi.
+  preferences Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  workspaces      Workspace[]         @relation("WorkspaceOwner")
+  captures        Capture[]
+  notes           Note[]
+  projects        Project[]
+  tasks           Task[]
+  knowledgeDocs   KnowledgeDocument[]
+  activities      ActivityLog[]
+  notifications   Notification[]
+  aiConversations AiConversation[]
+  comments        Comment[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// =====================================================
+// Workspace — BARU. Mockup punya workspace switcher,
+// tapi project lama cuma pakai "workspaceId String" lepas
+// tanpa relasi nyata ke tabel manapun. Ini diperbaiki di sini.
+// Sengaja TIDAK menambahkan member/invite/role dulu —
+// itu fitur yang di project lama dibangun duluan padahal
+// tidak pernah kepakai. Tambahkan nanti kalau memang ada
+// kebutuhan kolaborasi tim yang nyata.
+// =====================================================
+
+model Workspace {
+  id   String @id @default(cuid())
+  name String
+
+  ownerId String
+  owner   User   @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects        Project[]
+  tasks           Task[]
+  knowledgeDocs   KnowledgeDocument[]
+  collections     Collection[]
+  activities      ActivityLog[]
+  searchIndex     SearchIndexDocument[]
+  aiConversations AiConversation[]
+  comments        Comment[]
+
+  @@index([ownerId])
+}
+
+// =====================================================
+// Capture & Notes (dipertahankan — sudah nyata & teruji)
+// =====================================================
+
+model Capture {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// =====================================================
+// Projects — status disesuaikan dengan mockup
+// (In Progress / Completed / On Hold), tambah progress %
+// =====================================================
+
+enum ProjectStatus {
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(IN_PROGRESS)
+  progress    Int           @default(0) // 0-100, ditampilkan sbg progress bar
+  dueDate     DateTime?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks Task[]
+
+  @@index([workspaceId])
+}
+
+// =====================================================
+// Tasks — status Kanban (Todo/In Progress/Review/Done)
+// sesuai mockup, plus priority
+// =====================================================
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, dueDate])
+  @@index([projectId])
+}
+
+// =====================================================
+// Knowledge Base — disederhanakan dari project lama.
+// Versioning history DIHAPUS dulu (YAGNI — mockup tidak
+// menunjukkan UI riwayat versi). Tambahkan lagi kalau
+// benar-benar dibutuhkan nanti.
+// =====================================================
+
+enum KnowledgeDocType {
+  DOCUMENT
+  GUIDE
+  REFERENCE
+  NOTE
+}
+
+model KnowledgeDocument {
+  id      String           @id @default(cuid())
+  title   String
+  slug    String
+  content Json
+  type    KnowledgeDocType @default(DOCUMENT)
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   KnowledgeDocument?  @relation("KnowledgeDocHierarchy", fields: [parentId], references: [id])
+  children KnowledgeDocument[] @relation("KnowledgeDocHierarchy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([parentId])
+}
+
+// =====================================================
+// Collections — dipertahankan, disederhanakan relasinya
+// =====================================================
+
+model Collection {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   Collection?  @relation("CollectionHierarchy", fields: [parentId], references: [id])
+  children Collection[] @relation("CollectionHierarchy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+// =====================================================
+// Tags — satu tabel Tag + satu tabel assignment polimorfik
+// (bukan tabel join terpisah untuk tiap entity — cukup 1 pola)
+// =====================================================
+
+enum EntityType {
+  PROJECT
+  TASK
+  KNOWLEDGE_DOCUMENT
+  NOTE
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  slug  String @unique
+  color String
+
+  assignments TagAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TagAssignment {
+  id         String     @id @default(cuid())
+  tagId      String
+  tag        Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  targetType EntityType
+  targetId   String
+  createdAt  DateTime   @default(now())
+
+  @@unique([tagId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+// =====================================================
+// Comments — dipertahankan, pola polimorfik lama sudah baik
+// =====================================================
+
+model Comment {
+  id String @id @default(cuid())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  targetType EntityType
+  targetId   String
+
+  parentCommentId String?
+  parent          Comment?  @relation("CommentThread", fields: [parentCommentId], references: [id])
+  replies         Comment[] @relation("CommentThread")
+
+  content        Json
+  normalizedText String
+
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([workspaceId, targetType, targetId])
+  @@index([parentCommentId])
+}
+
+// =====================================================
+// Activity — BARU. Cukup log sederhana yang ditulis
+// langsung oleh service function saat aksi terjadi.
+// TIDAK pakai event bus / projection seperti project lama.
+// =====================================================
+
+enum ActivityType {
+  TASK_COMPLETED
+  TASK_CREATED
+  PROJECT_UPDATED
+  KNOWLEDGE_ADDED
+  COMMENT_ADDED
+}
+
+model ActivityLog {
+  id      String       @id @default(cuid())
+  type    ActivityType
+  message String // teks siap tampil, mis. "menyelesaikan task Implement authentication system"
+
+  targetType String? // "PROJECT" | "TASK" | "KNOWLEDGE_DOCUMENT" (bebas, tidak enum ketat)
+  targetId   String?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  actorId String
+  actor   User   @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
+// =====================================================
+// AI Assistant — percakapan dengan AI.
+//
+// Catatan: chat antar-anggota tim (Conversation/Message)
+// SENGAJA belum dibuat di v1 karena project ini single-user.
+// "Messages" di sidebar untuk sekarang = riwayat chat AI saja.
+// Kalau nanti benar-benar ada kebutuhan tim, tinggal tambah
+// balik model Conversation/ConversationParticipant/Message +
+// Workspace membership — tanpa perlu ubah apa pun di model
+// yang sudah ada di bawah ini.
+// =====================================================
+
+model AiConversation {
+  id    String  @id @default(cuid())
+  title String?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AiMessage[]
+
+  @@index([workspaceId, userId])
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role    AiMessageRole
+  content String
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+// =====================================================
+// Notification — BARU, untuk ikon lonceng di mockup
+// =====================================================
+
+model Notification {
+  id      String  @id @default(cuid())
+  message String
+  isRead  Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  targetType String?
+  targetId   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+// =====================================================
+// Search Index — dipertahankan, pola denormalized index
+// sederhana ini sudah tepat (bukan over-engineering,
+// cukup diisi langsung oleh service saat data berubah)
+// =====================================================
+
+model SearchIndexDocument {
+  id String @id @default(cuid())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  source   String // "project" | "task" | "knowledge_document" | "note"
+  sourceId String // id record aslinya, dipakai untuk link balik dari hasil pencarian
+  title    String
+  content  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([source, sourceId])
+}
