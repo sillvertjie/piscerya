@@ -1,15 +1,8 @@
-﻿import { Card } from "@/components/ui/Card";
-import { listKnowledgeDocsByWorkspace } from "@/modules/knowledge/knowledge.service";
+﻿import { listKnowledgeDocsByWorkspace } from "@/modules/knowledge/knowledge.service";
 import { KnowledgeForm } from "./KnowledgeForm";
+import { KnowledgeItem } from "./KnowledgeItem";
 
 const DEV_WORKSPACE_ID = "dev-workspace";
-
-const typeLabel: Record<string, string> = {
-  DOCUMENT: "Doc",
-  GUIDE: "Guide",
-  REFERENCE: "Reference",
-  NOTE: "Note",
-};
 
 export default async function KnowledgePage() {
   const docs = await listKnowledgeDocsByWorkspace(DEV_WORKSPACE_ID).catch(() => []);
@@ -21,12 +14,7 @@ export default async function KnowledgePage() {
       <div className="flex flex-col gap-2">
         {docs.length === 0 && <p className="text-muted">Belum ada dokumen.</p>}
         {docs.map((doc) => (
-          <Card key={doc.id} className="flex items-center justify-between">
-            <span>{doc.title}</span>
-            <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs text-muted">
-              {typeLabel[doc.type] ?? doc.type}
-            </span>
-          </Card>
+          <KnowledgeItem key={doc.id} doc={doc} />
         ))}
       </div>
     </div>
