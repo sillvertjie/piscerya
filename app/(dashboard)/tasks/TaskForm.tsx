@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
-const DEV_WORKSPACE_ID = "dev-workspace";
-
 export function TaskForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -21,7 +19,7 @@ export function TaskForm() {
     const res = await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, priority, workspaceId: DEV_WORKSPACE_ID }),
+      body: JSON.stringify({ title, priority }),
     });
 
     setLoading(false);

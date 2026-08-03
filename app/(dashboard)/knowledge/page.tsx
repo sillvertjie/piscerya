@@ -1,11 +1,11 @@
 ﻿import { listKnowledgeDocsByWorkspace } from "@/modules/knowledge/knowledge.service";
+import { getSessionOrRedirect } from "@/lib/session";
 import { KnowledgeForm } from "./KnowledgeForm";
 import { KnowledgeItem } from "./KnowledgeItem";
 
-const DEV_WORKSPACE_ID = "dev-workspace";
-
 export default async function KnowledgePage() {
-  const docs = await listKnowledgeDocsByWorkspace(DEV_WORKSPACE_ID).catch(() => []);
+  const { workspaceId } = await getSessionOrRedirect();
+  const docs = await listKnowledgeDocsByWorkspace(workspaceId).catch(() => []);
 
   return (
     <div>

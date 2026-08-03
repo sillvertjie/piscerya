@@ -4,13 +4,16 @@ import {
   getProjectById,
   updateProject,
 } from "@/modules/projects/project.service";
-
-const DEV_USER_ID = "dev-user";
+import { getSessionForApi } from "@/lib/session";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionForApi();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const project = await getProjectById(id);
 
@@ -28,11 +31,15 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionForApi();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const body = await request.json();
 
   try {
-    const project = await updateProject(id, body, DEV_USER_ID);
+    const project = await updateProject(id, body, session.userId);
     return NextResponse.json(project);
   } catch (error) {
     return NextResponse.json(
@@ -46,6 +53,10 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionForApi();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   await deleteProject(id);
   return NextResponse.json({ success: true });

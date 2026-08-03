@@ -1,11 +1,11 @@
 ﻿import { listTasksByWorkspace } from "@/modules/tasks/task.service";
+import { getSessionOrRedirect } from "@/lib/session";
 import { TaskForm } from "./TaskForm";
 import { TaskItem } from "./TaskItem";
 
-const DEV_WORKSPACE_ID = "dev-workspace";
-
 export default async function TasksPage() {
-  const tasks = await listTasksByWorkspace(DEV_WORKSPACE_ID).catch(() => []);
+  const { workspaceId } = await getSessionOrRedirect();
+  const tasks = await listTasksByWorkspace(workspaceId).catch(() => []);
 
   return (
     <div>

@@ -4,11 +4,16 @@ import {
   getKnowledgeDocById,
   updateKnowledgeDoc,
 } from "@/modules/knowledge/knowledge.service";
+import { getSessionForApi } from "@/lib/session";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionForApi();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const doc = await getKnowledgeDocById(id);
 
@@ -26,6 +31,10 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionForApi();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const body = await request.json();
 
@@ -44,6 +53,10 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionForApi();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   await deleteKnowledgeDoc(id);
   return NextResponse.json({ success: true });

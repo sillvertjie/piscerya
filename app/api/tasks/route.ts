@@ -1,26 +1,23 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createTask, listTasksByWorkspace } from "@/modules/tasks/task.service";
+import { getSessionForApi } from "@/lib/session";
 
-// TODO: ganti dengan session user asli setelah auth dipasang
-const DEV_USER_ID = "dev-user";
+export async function GET() {
+  const session = await getSessionForApi();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const workspaceId = searchParams.get("workspaceId");
-
-  if (!workspaceId) {
-    return NextResponse.json({ error: "workspaceId wajib diisi" }, { status: 400 });
-  }
-
-  const tasks = await listTasksByWorkspace(workspaceId);
+  const tasks = await listTasksByWorkspace(session.workspaceId);
   return NextResponse.json(tasks);
 }
 
 export async function POST(request: Request) {
+  const session = await getSessionForApi();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await request.json();
 
   try {
-    const task = await createTask(body, DEV_USER_ID);
+    const task = await createTask({ ...body, workspaceId: session.workspaceId }, session.userId);
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });

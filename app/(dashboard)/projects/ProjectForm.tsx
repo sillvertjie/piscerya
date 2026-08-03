@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
-const DEV_WORKSPACE_ID = "dev-workspace";
-
 export function ProjectForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -20,7 +18,7 @@ export function ProjectForm() {
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, workspaceId: DEV_WORKSPACE_ID }),
+      body: JSON.stringify({ name }),
     });
 
     setLoading(false);

@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
-const DEV_WORKSPACE_ID = "dev-workspace";
-
 export function KnowledgeForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -21,7 +19,7 @@ export function KnowledgeForm() {
     const res = await fetch("/api/knowledge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, type, workspaceId: DEV_WORKSPACE_ID }),
+      body: JSON.stringify({ title, type }),
     });
 
     setLoading(false);
