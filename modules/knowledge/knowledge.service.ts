@@ -57,14 +57,27 @@ export async function createKnowledgeDoc(
 
 export async function updateKnowledgeDoc(
   id: string,
+  workspaceId: string,
   input: UpdateKnowledgeDocInput,
 ) {
   const data = updateKnowledgeDocSchema.parse(input);
-  return db.knowledgeDocument.update({ where: { id }, data });
+  const { count } = await db.knowledgeDocument.updateMany({
+    where: { id, workspaceId },
+    data,
+  });
+  if (count === 0) {
+    throw new Error("Dokumen tidak ditemukan");
+  }
+  return db.knowledgeDocument.findUniqueOrThrow({ where: { id } });
 }
 
-export async function deleteKnowledgeDoc(id: string) {
-  return db.knowledgeDocument.delete({ where: { id } });
+export async function deleteKnowledgeDoc(id: string, workspaceId: string) {
+  const { count } = await db.knowledgeDocument.deleteMany({
+    where: { id, workspaceId },
+  });
+  if (count === 0) {
+    throw new Error("Dokumen tidak ditemukan");
+  }
 }
 
 export async function listKnowledgeDocsByWorkspace(workspaceId: string) {
@@ -74,9 +87,9 @@ export async function listKnowledgeDocsByWorkspace(workspaceId: string) {
   });
 }
 
-export async function getKnowledgeDocById(id: string) {
-  return db.knowledgeDocument.findUnique({
-    where: { id },
+export async function getKnowledgeDocById(id: string, workspaceId: string) {
+  return db.knowledgeDocument.findFirst({
+    where: { id, workspaceId },
     include: { children: true, author: { select: { name: true } } },
   });
 }

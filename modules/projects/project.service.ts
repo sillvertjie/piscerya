@@ -6,7 +6,10 @@ import {
   type UpdateProjectInput,
 } from "./project.types";
 
-export async function createProject(input: CreateProjectInput, ownerId: string) {
+export async function createProject(
+  input: CreateProjectInput,
+  ownerId: string,
+) {
   const data = createProjectSchema.parse(input);
 
   const project = await db.project.create({
@@ -27,10 +30,22 @@ export async function createProject(input: CreateProjectInput, ownerId: string) 
   return project;
 }
 
-export async function updateProject(id: string, input: UpdateProjectInput, actorId: string) {
+export async function updateProject(
+  id: string,
+  workspaceId: string,
+  input: UpdateProjectInput,
+  actorId: string,
+) {
   const data = updateProjectSchema.parse(input);
 
-  const project = await db.project.update({ where: { id }, data });
+  const { count } = await db.project.updateMany({
+    where: { id, workspaceId },
+    data,
+  });
+  if (count === 0) {
+    throw new Error("Project tidak ditemukan");
+  }
+  const project = await db.project.findUniqueOrThrow({ where: { id } });
 
   await db.activityLog.create({
     data: {
@@ -46,8 +61,11 @@ export async function updateProject(id: string, input: UpdateProjectInput, actor
   return project;
 }
 
-export async function deleteProject(id: string) {
-  return db.project.delete({ where: { id } });
+export async function deleteProject(id: string, workspaceId: string) {
+  const { count } = await db.project.deleteMany({ where: { id, workspaceId } });
+  if (count === 0) {
+    throw new Error("Project tidak ditemukan");
+  }
 }
 
 export async function listProjectsByWorkspace(workspaceId: string) {
@@ -58,9 +76,9 @@ export async function listProjectsByWorkspace(workspaceId: string) {
   });
 }
 
-export async function getProjectById(id: string) {
-  return db.project.findUnique({
-    where: { id },
+export async function getProjectById(id: string, workspaceId: string) {
+  return db.project.findFirst({
+    where: { id, workspaceId },
     include: { tasks: true },
   });
 }

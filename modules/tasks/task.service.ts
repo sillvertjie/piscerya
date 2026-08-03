@@ -9,6 +9,16 @@ import {
 export async function createTask(input: CreateTaskInput, ownerId: string) {
   const data = createTaskSchema.parse(input);
 
+  if (data.projectId) {
+    const project = await db.project.findFirst({
+      where: { id: data.projectId, workspaceId: data.workspaceId },
+      select: { id: true },
+    });
+    if (!project) {
+      throw new Error("Project tidak ditemukan di workspace ini");
+    }
+  }
+
   const task = await db.task.create({
     data: { ...data, ownerId },
   });
@@ -27,10 +37,22 @@ export async function createTask(input: CreateTaskInput, ownerId: string) {
   return task;
 }
 
-export async function updateTask(id: string, input: UpdateTaskInput, actorId: string) {
+export async function updateTask(
+  id: string,
+  workspaceId: string,
+  input: UpdateTaskInput,
+  actorId: string,
+) {
   const data = updateTaskSchema.parse(input);
 
-  const task = await db.task.update({ where: { id }, data });
+  const { count } = await db.task.updateMany({
+    where: { id, workspaceId },
+    data,
+  });
+  if (count === 0) {
+    throw new Error("Task tidak ditemukan");
+  }
+  const task = await db.task.findUniqueOrThrow({ where: { id } });
 
   if (data.status === "DONE") {
     await db.activityLog.create({
@@ -48,8 +70,11 @@ export async function updateTask(id: string, input: UpdateTaskInput, actorId: st
   return task;
 }
 
-export async function deleteTask(id: string) {
-  return db.task.delete({ where: { id } });
+export async function deleteTask(id: string, workspaceId: string) {
+  const { count } = await db.task.deleteMany({ where: { id, workspaceId } });
+  if (count === 0) {
+    throw new Error("Task tidak ditemukan");
+  }
 }
 
 export async function listTasksByWorkspace(workspaceId: string) {

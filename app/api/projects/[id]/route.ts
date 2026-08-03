@@ -15,7 +15,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const project = await getProjectById(id);
+  const project = await getProjectById(id, session.workspaceId);
 
   if (!project) {
     return NextResponse.json(
@@ -39,7 +39,12 @@ export async function PATCH(
   const body = await request.json();
 
   try {
-    const project = await updateProject(id, body, session.userId);
+    const project = await updateProject(
+      id,
+      session.workspaceId,
+      body,
+      session.userId,
+    );
     return NextResponse.json(project);
   } catch (error) {
     return NextResponse.json(
@@ -58,6 +63,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  await deleteProject(id);
-  return NextResponse.json({ success: true });
+
+  try {
+    await deleteProject(id, session.workspaceId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 404 },
+    );
+  }
 }

@@ -15,7 +15,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const doc = await getKnowledgeDocById(id);
+  const doc = await getKnowledgeDocById(id, session.workspaceId);
 
   if (!doc) {
     return NextResponse.json(
@@ -39,7 +39,7 @@ export async function PATCH(
   const body = await request.json();
 
   try {
-    const doc = await updateKnowledgeDoc(id, body);
+    const doc = await updateKnowledgeDoc(id, session.workspaceId, body);
     return NextResponse.json(doc);
   } catch (error) {
     return NextResponse.json(
@@ -58,6 +58,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  await deleteKnowledgeDoc(id);
-  return NextResponse.json({ success: true });
+
+  try {
+    await deleteKnowledgeDoc(id, session.workspaceId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 404 },
+    );
+  }
 }

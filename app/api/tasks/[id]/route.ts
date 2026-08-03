@@ -14,7 +14,12 @@ export async function PATCH(
   const body = await request.json();
 
   try {
-    const task = await updateTask(id, body, session.userId);
+    const task = await updateTask(
+      id,
+      session.workspaceId,
+      body,
+      session.userId,
+    );
     return NextResponse.json(task);
   } catch (error) {
     return NextResponse.json(
@@ -33,6 +38,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  await deleteTask(id);
-  return NextResponse.json({ success: true });
+
+  try {
+    await deleteTask(id, session.workspaceId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 404 },
+    );
+  }
 }
